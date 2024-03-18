@@ -1,10 +1,15 @@
+import 'package:chap04_flutter_provider/to_do_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(
-    const MyApp(),
-  );
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (context) => ToDoService()),
+    ],
+    child: const MyApp(),
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -33,26 +38,71 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("ToDo 리스트"),
-      ),
-      body: Center(child: Text("ToDo 리스트를 작성해 주세요.")),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () {
-          // + 버튼 클릭시 ToDo 생성 페이지로 이동
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => CreatePage()),
-          );
-        },
-      ),
+    return Consumer<ToDoService>(
+      builder: (context, toDoService, child) {
+        // toDoService로 부터 toDoList 가져오기
+        List<ToDo> toDoList = toDoService.toDoList;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text("ToDo 리스트"),
+          ),
+          body: toDoList.isEmpty
+              ? Center(
+                  child: Text("To Do List를 작성해주세요"),
+                )
+              : ListView.builder(
+                  itemCount: toDoList.length,
+                  itemBuilder: (context, index) {
+                    ToDo toDo = toDoList[index];
+                    return ListTile(
+                      title: Text(
+                        toDo.job,
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: toDo.isDone ? Colors.grey : Colors.black,
+                          decoration: toDo.isDone
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(
+                          CupertinoIcons.delete,
+                        ),
+                        onPressed: () {
+                          //이걸안햇군..
+                          toDoService.deleteToDo(index);
+
+                          ///서비스에 로직구현한거 쓰질않았어 ㅋ.
+                        },
+                        //삭제버튼 눌렀을때 작동
+                      ),
+                      onTap: () {
+                        //아이템클릭시.
+                        toDo.isDone = !toDo.isDone; //isdone에 상태값이 바뀌면서,
+                        toDoService.updateToDo(toDo, index); //여기ㅣ 메서드에 보내줌..
+                      },
+                    );
+                  }),
+          floatingActionButton: FloatingActionButton(
+            child: Icon(Icons.add),
+            onPressed: () {
+              // + 버튼 클릭시 ToDo 생성 페이지로 이동
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => CreatePage()),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
 
-/// ToDo 생성 페이지
+//ToDo 생성 ㅓㅓ페이지. 이부분없었네 ㅋ
+
 class CreatePage extends StatefulWidget {
   const CreatePage({Key? key}) : super(key: key);
 
@@ -61,10 +111,7 @@ class CreatePage extends StatefulWidget {
 }
 
 class _CreatePageState extends State<CreatePage> {
-  // TextField의 값을 가져올 때 사용
   TextEditingController textController = TextEditingController();
-
-  // 경고 메세지
   String? error;
 
   @override
@@ -93,7 +140,6 @@ class _CreatePageState extends State<CreatePage> {
                 errorText: error,
               ),
             ),
-            SizedBox(height: 20),
             // 추가하기 버튼
             SizedBox(
               width: double.infinity,
@@ -118,6 +164,8 @@ class _CreatePageState extends State<CreatePage> {
                       // 내용이 있는 경우 에러 메세지 숨김
                       error = null;
                     });
+                    ToDoService todoService = context.read<ToDoService>();
+                    todoService.createToDo(job);
                     Navigator.pop(context);
                   }
                 },
