@@ -1,14 +1,19 @@
+import 'package:chap06_flutter_cat/NextPage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 //이렇게 프로바이더 등록.
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (context) => CatService(),
+          create: (context) => CatService(prefs),
         ),
       ],
       child: MyApp(),
@@ -32,20 +37,21 @@ class MyApp extends StatelessWidget {
 
 class CatService extends ChangeNotifier {
   //상속받고
+  SharedPreferences prefs;
   List<String> catImages = []; //이미지받을 리스트 선언.
   //좋아요 받을 리스트 배열로 하나 만들어주자.
   List<String> favoriteCatImages = [];
 
-  CatService() {
+  CatService(this.prefs) {
     getRandomCatImages();
+    favoriteCatImages = prefs.getStringList('image') ?? [];
   }
-
 //고양이이 이미지 10개 가져오는 메서드
 
 //고양이 사진가져오는 함수 만들자
   void getRandomCatImages() async {
     String path =
-        "https://api.thecatapi.com/v1/images/search?limit=10&mime_types=jpg";
+        "https://api.thecatapi.com/v1/images/search?limit=10&mime_types=gif";
     var result = await Dio().get(path);
     print(result.data); //고양이 이미지를 어플리케이션실행시 가져오게
     //요청으로 ->   <--이미지 넣으려고함...
@@ -70,6 +76,7 @@ class CatService extends ChangeNotifier {
     } else {
       favoriteCatImages.add(catImage);
     }
+    prefs.setStringList("image", favoriteCatImages);
     notifyListeners(); //이렇게 좋아요기능만들었으니, 온탭으로..
   }
 }
@@ -93,6 +100,10 @@ class HomePage extends StatelessWidget {
             actions: [
               IconButton(
                 onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => NextPage()),
+                  );
                   //아이콘 버튼 눌렀을때 동작.
                 },
                 icon: Icon(
@@ -139,6 +150,7 @@ class HomePage extends StatelessWidget {
                     ))
                   ],
                 ),
+
                 onTap: () {
                   catService.toggleFavoriteImage(catImage);
                 }, //온탭넣기위해 제스쳐디텍티드로 감싸줌..);
